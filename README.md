@@ -100,7 +100,7 @@ export LLM_MODEL="gpt-4o-mini"  # or "claude-3-sonnet"
 mkdir -p logs
 
 # Start the server
-uv run python -m src.api.main
+uv run uvicorn src.api.main:app --host 0.0.0.0 --port 8000
 ```
 
 ## 🌐 API Documentation
