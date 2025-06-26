@@ -1,5 +1,6 @@
-"""Evaluation framework for SRE Workflow Agent."""
+"""Evaluation module for SRE Workflow Agent."""
 
+from .evaluator import SRenityEvaluator
 from .metrics import (
     RCAEvaluationMetrics,
     CorrelationEvaluationMetrics,
@@ -7,33 +8,40 @@ from .metrics import (
     SREOperationalMetrics,
     PerformanceMetrics
 )
-from .evaluator import SRenityEvaluator
 from .scenarios import EvaluationScenarios
 from .schemas import (
     EvaluationResult,
+    EvaluationConfig,
+    ScenarioResult,
+    EvaluationStatus,
+    ScenarioType,
     RCAEvaluation,
     CorrelationEvaluation,
     LLMEvaluation,
     OperationalEvaluation,
     PerformanceEvaluation,
-    ScenarioResult,
-    EvaluationConfig
+    GroundTruth
 )
+from .opik_evaluator import OpikWorkflowEvaluator
 
 __all__ = [
-    "RCAEvaluationMetrics",
-    "CorrelationEvaluationMetrics", 
-    "LLMEvaluationMetrics",
-    "SREOperationalMetrics",
-    "PerformanceMetrics",
-    "SRenityEvaluator",
-    "EvaluationScenarios",
-    "EvaluationResult",
-    "RCAEvaluation",
-    "CorrelationEvaluation",
-    "LLMEvaluation",
-    "OperationalEvaluation",
-    "PerformanceEvaluation",
-    "ScenarioResult",
-    "EvaluationConfig"
+    'SRenityEvaluator',
+    'OpikWorkflowEvaluator',
+    'RCAEvaluationMetrics',
+    'CorrelationEvaluationMetrics',
+    'LLMEvaluationMetrics',
+    'SREOperationalMetrics',
+    'PerformanceMetrics',
+    'EvaluationScenarios',
+    'EvaluationResult',
+    'EvaluationConfig',
+    'ScenarioResult',
+    'EvaluationStatus',
+    'ScenarioType',
+    'RCAEvaluation',
+    'CorrelationEvaluation',
+    'LLMEvaluation',
+    'OperationalEvaluation',
+    'PerformanceEvaluation',
+    'GroundTruth'
 ] 

@@ -69,7 +69,7 @@ class WorkflowNodes:
         # Add Opik tracing if available and configured
         if OPIK_AVAILABLE and self._is_opik_configured():
             try:
-                # Set environment variables for Opik (following quickstart guide)
+                # Set environment variables for Opik
                 import os
                 os.environ["OPIK_API_KEY"] = os.getenv("OPIK_API_KEY")
                 os.environ["OPIK_WORKSPACE"] = os.getenv("OPIK_WORKSPACE")
@@ -117,8 +117,6 @@ class WorkflowNodes:
             
             # Add any pre-processing logic here
             state.error_messages = []
-            
-            # No need for manual Opik logging here - @track decorator handles it
             
             return state
             
@@ -251,7 +249,7 @@ class WorkflowNodes:
                 frequency=1,
                 time_window="incident_window",
                 examples=[llm_analysis],
-                severity_score=5.0  # Default severity
+                severity_score=5.0
             )
             
             state.pattern_analysis.append(llm_pattern)
@@ -498,10 +496,10 @@ class WorkflowNodes:
         system_prompt = """You are an expert SRE analyst. Analyze the provided observability data to identify patterns, correlations, and potential issues. Focus on:
         1. Error patterns and their frequency
         2. Correlations between logs, metrics, and traces
-        3. Anomalies and their potential causes
-        4. Time-based patterns
+        3. Anomaly detection and significance
+        4. Impact assessment
         
-        Provide a structured analysis with key findings and potential root causes."""
+        Provide a concise analysis with key findings."""
         
         user_prompt = f"""Analyze this incident data:
         
@@ -512,7 +510,7 @@ class WorkflowNodes:
         Data Summary:
         {data_summary}
         
-        Provide your analysis in a structured format."""
+        Identify patterns, correlations, and potential issues."""
         
         messages = [
             SystemMessage(content=system_prompt),
@@ -521,28 +519,28 @@ class WorkflowNodes:
         
         response = self.llm.invoke(messages)
         return response.content
-
+    
     @track(project_name="srenity")
     def _generate_root_cause_analysis_llm(self, incident_title: str, incident_description: str,
                                          rca_data: str) -> str:
         """Generate root cause analysis using LLM with proper Opik tracking."""
-        system_prompt = """You are an expert SRE engineer performing root cause analysis. Based on the incident data and observability information, determine:
+        system_prompt = """You are an expert SRE performing root cause analysis. Based on the incident data and patterns, determine:
         1. The most likely primary root cause
         2. Contributing factors
         3. Supporting evidence from the data
         4. Confidence level in your analysis
         
-        Provide a structured RCA with clear reasoning."""
+        Structure your response clearly with sections for each component."""
         
-        user_prompt = f"""Perform root cause analysis for:
+        user_prompt = f"""Perform root cause analysis for this incident:
         
         Incident: {incident_title}
         Description: {incident_description}
         
-        Analysis Data:
+        Data and Analysis:
         {rca_data}
         
-        Provide detailed RCA in structured format."""
+        Provide a detailed root cause analysis with evidence."""
         
         messages = [
             SystemMessage(content=system_prompt),
@@ -551,19 +549,18 @@ class WorkflowNodes:
         
         response = self.llm.invoke(messages)
         return response.content
-
+    
     def _generate_executive_summary(self, state: WorkflowState) -> str:
         """Generate executive summary of the incident."""
+        incident = state.incident_request
+        rca = state.root_cause_analysis
+        
         summary_parts = [
-            f"Incident {state.incident_request.incident_id} - {state.incident_request.title}",
-            f"Severity: {state.incident_request.severity.upper()}",
-            f"Occurred: {state.incident_request.timestamp}",
+            f"Incident {incident.incident_id} - {incident.title}",
+            f"Severity: {incident.severity.upper()}",
+            f"Occurred: {incident.timestamp}",
+            f"Root Cause: {rca.primary_cause if rca else 'Under investigation'}",
+            f"Recommendations: {len(state.recommendations)} actions identified"
         ]
-        
-        if state.root_cause_analysis:
-            summary_parts.append(f"Root Cause: {state.root_cause_analysis.primary_cause}")
-        
-        if state.recommendations:
-            summary_parts.append(f"Recommendations: {len(state.recommendations)} actions identified")
         
         return "\n".join(summary_parts) 

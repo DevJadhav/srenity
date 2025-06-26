@@ -604,4 +604,65 @@ async def get_dashboard():
         with open(dashboard_path, "r") as f:
             return HTMLResponse(content=f.read(), status_code=200)
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Dashboard not found") 
+        raise HTTPException(status_code=404, detail="Dashboard not found")
+
+
+@router.get("/workflow/visualize", tags=["workflow"])
+async def visualize_workflow(format: str = "mermaid", log_to_opik: bool = False):
+    """
+    Visualize the workflow graph.
+    
+    Args:
+        format: Output format - 'mermaid' for text diagram or 'png' for image
+        log_to_opik: Whether to log the workflow graph to Opik
+    
+    Returns:
+        Workflow visualization in requested format
+    """
+    try:
+        agent = get_workflow_agent()
+        
+        # Log to Opik if requested
+        if log_to_opik and hasattr(agent, 'log_workflow_graph_to_opik'):
+            agent.log_workflow_graph_to_opik()
+            logger.info("Workflow graph logged to Opik")
+        
+        if format == "mermaid":
+            # Return Mermaid diagram text
+            diagram = agent.get_workflow_mermaid()
+            return {
+                "success": True,
+                "format": "mermaid",
+                "diagram": diagram,
+                "opik_logged": log_to_opik
+            }
+        elif format == "png":
+            # Generate PNG and return path
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+                path = agent.visualize_workflow(tmp.name)
+                
+                # Read the PNG file
+                with open(path, "rb") as f:
+                    png_data = f.read()
+                
+                # Convert to base64 for API response
+                import base64
+                png_base64 = base64.b64encode(png_data).decode()
+                
+                return {
+                    "success": True,
+                    "format": "png",
+                    "data": png_base64,
+                    "mime_type": "image/png",
+                    "opik_logged": log_to_opik
+                }
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported format: {format}. Use 'mermaid' or 'png'"
+            )
+            
+    except Exception as e:
+        logger.error(f"Error visualizing workflow: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) 
