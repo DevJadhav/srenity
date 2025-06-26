@@ -8,8 +8,17 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from .endpoints import router, set_agent
-from ..agent.workflow import SREWorkflowAgent
+try:
+    # Try relative imports first (when run as module)
+    from .endpoints import router, set_agent
+    from ..agent.workflow import SREWorkflowAgent
+except ImportError:
+    # Fall back to absolute imports (when run directly)
+    import sys
+    import os
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from api.endpoints import router, set_agent
+    from agent.workflow import SREWorkflowAgent
 
 
 # Global agent instance

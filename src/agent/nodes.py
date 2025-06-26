@@ -69,6 +69,11 @@ class WorkflowNodes:
         # Add Opik tracing if available and configured
         if OPIK_AVAILABLE and self._is_opik_configured():
             try:
+                # Set environment variables for Opik (following quickstart guide)
+                import os
+                os.environ["OPIK_API_KEY"] = os.getenv("OPIK_API_KEY")
+                os.environ["OPIK_WORKSPACE"] = os.getenv("OPIK_WORKSPACE")
+                
                 tracer = OpikTracer()
                 llm_kwargs["callbacks"] = [tracer]
                 logger.info("✅ Opik LLM tracing enabled")
@@ -79,10 +84,11 @@ class WorkflowNodes:
     
     def _initialize_opik(self) -> Optional[Any]:
         """Initialize Opik client if available and configured."""
-        if not OPIK_AVAILABLE or not self._is_opik_configured():
+        if not OPIK_AVAILABLE:
             return None
         
         try:
+            # Initialize Opik client
             client = opik.Opik()
             logger.info("✅ Opik client initialized")
             return client
@@ -95,7 +101,7 @@ class WorkflowNodes:
         required_vars = ["OPIK_API_KEY", "OPIK_WORKSPACE"]
         return all(os.getenv(var) for var in required_vars)
     
-    @track
+    @track(project_name="srenity")
     def incident_ingestion_node(self, state: WorkflowState) -> WorkflowState:
         """Process and validate incoming incident data."""
         logger.info(f"Processing incident: {state.incident_request.incident_id}")
@@ -112,22 +118,7 @@ class WorkflowNodes:
             # Add any pre-processing logic here
             state.error_messages = []
             
-            # Log to Opik if available
-            if self.opik_client:
-                try:
-                    # Use the correct Opik logging method
-                    if hasattr(self.opik_client, 'log_trace'):
-                        self.opik_client.log_trace(
-                            name="incident_ingestion",
-                            input={"incident_id": incident.incident_id, "severity": incident.severity.value},
-                            output={"status": "completed"},
-                            metadata={"node": "incident_ingestion"}
-                        )
-                    else:
-                        # Alternative logging method
-                        logger.debug("Opik trace logging not available, skipping")
-                except Exception as e:
-                    logger.warning(f"Failed to log to Opik: {e}")
+            # No need for manual Opik logging here - @track decorator handles it
             
             return state
             
@@ -136,7 +127,7 @@ class WorkflowNodes:
             state.error_messages.append(f"Incident ingestion error: {str(e)}")
             return state
     
-    @track
+    @track(project_name="srenity")
     def data_collection_node(self, state: WorkflowState) -> WorkflowState:
         """Collect logs, metrics, and traces data."""
         logger.info("Collecting observability data...")
@@ -179,7 +170,7 @@ class WorkflowNodes:
             state.error_messages.append(f"Data collection error: {str(e)}")
             return state
     
-    @track
+    @track(project_name="srenity")
     def log_analysis_node(self, state: WorkflowState) -> WorkflowState:
         """Analyze collected log data for patterns and anomalies."""
         logger.info("Analyzing log data...")
@@ -237,7 +228,7 @@ class WorkflowNodes:
             state.error_messages.append(f"Log analysis error: {str(e)}")
             return state
     
-    @track
+    @track(project_name="srenity")
     def pattern_recognition_node(self, state: WorkflowState) -> WorkflowState:
         """Use LLM to identify patterns and correlations across all data."""
         logger.info("Performing pattern recognition with LLM...")
@@ -246,35 +237,13 @@ class WorkflowNodes:
             # Prepare data summary for LLM
             data_summary = self._prepare_data_summary(state)
             
-            # Create LLM prompt
-            system_prompt = """You are an expert SRE analyst. Analyze the provided observability data to identify patterns, correlations, and potential issues. Focus on:
-            1. Error patterns and their frequency
-            2. Correlations between logs, metrics, and traces
-            3. Anomalies and their potential causes
-            4. Time-based patterns
-            
-            Provide a structured analysis with key findings and potential root causes."""
-            
-            user_prompt = f"""Analyze this incident data:
-            
-            Incident: {state.incident_request.title}
-            Description: {state.incident_request.description}
-            Severity: {state.incident_request.severity}
-            
-            Data Summary:
-            {data_summary}
-            
-            Provide your analysis in a structured format."""
-            
-            messages = [
-                SystemMessage(content=system_prompt),
-                HumanMessage(content=user_prompt)
-            ]
-            
-            response = self.llm.invoke(messages)
-            
-            # Parse LLM response and add to state
-            llm_analysis = response.content
+            # Use the official @track decorator pattern for LLM calls
+            llm_analysis = self._analyze_patterns_with_llm(
+                incident_title=state.incident_request.title,
+                incident_description=state.incident_request.description,
+                incident_severity=str(state.incident_request.severity),
+                data_summary=data_summary
+            )
             
             # Create additional pattern analysis based on LLM insights
             llm_pattern = PatternAnalysis(
@@ -295,6 +264,7 @@ class WorkflowNodes:
             state.error_messages.append(f"Pattern recognition error: {str(e)}")
             return state
     
+    @track(project_name="srenity")
     def rca_generation_node(self, state: WorkflowState) -> WorkflowState:
         """Generate root cause analysis using LLM."""
         logger.info("Generating root cause analysis...")
@@ -303,33 +273,12 @@ class WorkflowNodes:
             # Prepare comprehensive data for RCA
             rca_data = self._prepare_rca_data(state)
             
-            system_prompt = """You are an expert SRE engineer performing root cause analysis. Based on the incident data and observability information, determine:
-            1. The most likely primary root cause
-            2. Contributing factors
-            3. Supporting evidence from the data
-            4. Timeline of events
-            5. Confidence level in your analysis
-            
-            Be specific and reference actual data points when possible."""
-            
-            user_prompt = f"""Perform root cause analysis for this incident:
-            
-            Incident: {state.incident_request.title}
-            Description: {state.incident_request.description}
-            Severity: {state.incident_request.severity}
-            
-            Analysis Data:
-            {rca_data}
-            
-            Provide your root cause analysis in a structured format with primary cause, contributing factors, evidence, and timeline."""
-            
-            messages = [
-                SystemMessage(content=system_prompt),
-                HumanMessage(content=user_prompt)
-            ]
-            
-            response = self.llm.invoke(messages)
-            rca_text = response.content
+            # Use the official @track decorator pattern for LLM calls
+            rca_text = self._generate_root_cause_analysis_llm(
+                incident_title=state.incident_request.title,
+                incident_description=state.incident_request.description,
+                rca_data=f"{rca_data}\nSeverity: {state.incident_request.severity}\nPattern Analysis: {[p.pattern_type for p in state.pattern_analysis]}"
+            )
             
             # Parse RCA into structured format
             rca = self._parse_rca_response(rca_text, state)
@@ -542,6 +491,67 @@ class WorkflowNodes:
             )
         ]
     
+    @track(project_name="srenity")
+    def _analyze_patterns_with_llm(self, incident_title: str, incident_description: str, 
+                                  incident_severity: str, data_summary: str) -> str:
+        """Analyze patterns using LLM with proper Opik tracking."""
+        system_prompt = """You are an expert SRE analyst. Analyze the provided observability data to identify patterns, correlations, and potential issues. Focus on:
+        1. Error patterns and their frequency
+        2. Correlations between logs, metrics, and traces
+        3. Anomalies and their potential causes
+        4. Time-based patterns
+        
+        Provide a structured analysis with key findings and potential root causes."""
+        
+        user_prompt = f"""Analyze this incident data:
+        
+        Incident: {incident_title}
+        Description: {incident_description}
+        Severity: {incident_severity}
+        
+        Data Summary:
+        {data_summary}
+        
+        Provide your analysis in a structured format."""
+        
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_prompt)
+        ]
+        
+        response = self.llm.invoke(messages)
+        return response.content
+
+    @track(project_name="srenity")
+    def _generate_root_cause_analysis_llm(self, incident_title: str, incident_description: str,
+                                         rca_data: str) -> str:
+        """Generate root cause analysis using LLM with proper Opik tracking."""
+        system_prompt = """You are an expert SRE engineer performing root cause analysis. Based on the incident data and observability information, determine:
+        1. The most likely primary root cause
+        2. Contributing factors
+        3. Supporting evidence from the data
+        4. Confidence level in your analysis
+        
+        Provide a structured RCA with clear reasoning."""
+        
+        user_prompt = f"""Perform root cause analysis for:
+        
+        Incident: {incident_title}
+        Description: {incident_description}
+        
+        Analysis Data:
+        {rca_data}
+        
+        Provide detailed RCA in structured format."""
+        
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_prompt)
+        ]
+        
+        response = self.llm.invoke(messages)
+        return response.content
+
     def _generate_executive_summary(self, state: WorkflowState) -> str:
         """Generate executive summary of the incident."""
         summary_parts = [

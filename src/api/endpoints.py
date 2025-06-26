@@ -8,17 +8,35 @@ from fastapi.responses import HTMLResponse
 from loguru import logger
 import os
 
-from ..agent.workflow import SREWorkflowAgent
-from ..models.schemas import (
-    IncidentRequest, 
-    IncidentResponse, 
-    APIResponse,
-    LogEntry,
-    MetricData,
-    TraceData
-)
-from ..evaluation.evaluator import SRenityEvaluator
-from ..evaluation.schemas import EvaluationConfig, ScenarioType
+try:
+    # Try relative imports first (when run as module)
+    from ..agent.workflow import SREWorkflowAgent
+    from ..models.schemas import (
+        IncidentRequest, 
+        IncidentResponse, 
+        APIResponse,
+        LogEntry,
+        MetricData,
+        TraceData
+    )
+    from ..evaluation.evaluator import SRenityEvaluator
+    from ..evaluation.schemas import EvaluationConfig, ScenarioType
+except ImportError:
+    # Fall back to absolute imports (when run directly)
+    import sys
+    import os
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from agent.workflow import SREWorkflowAgent
+    from models.schemas import (
+        IncidentRequest, 
+        IncidentResponse, 
+        APIResponse,
+        LogEntry,
+        MetricData,
+        TraceData
+    )
+    from evaluation.evaluator import SRenityEvaluator
+    from evaluation.schemas import EvaluationConfig, ScenarioType
 
 # Initialize router
 router = APIRouter()
