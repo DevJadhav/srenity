@@ -305,9 +305,9 @@ GET /api/evaluation/metrics/definitions
 | `LOG_FILE_PATH` | `data/Apache_2k.log_structured.csv` | Apache log file path |
 | `TEMPLATES_FILE_PATH` | `data/Apache_2k.log_templates.csv` | Log templates file |
 | `LLM_MODEL` | `gpt-4o-mini` | LLM model to use |
-| `OPIK_API_KEY` | - | Opik integration for evaluation tracking |
-| `OPIK_WORKSPACE` | - | Opik workspace name |
-| `OPIK_PROJECT_NAME` | `srenity` | Opik project name |
+| `OPIK_API_KEY` | - | Opik integration for evaluation tracking (optional) |
+| `OPIK_WORKSPACE` | - | Opik workspace name (optional) |
+| `OPIK_PROJECT_NAME` | `srenity` | Opik project name (optional) |
 | `LOG_LEVEL` | `INFO` | Logging level |
 
 ### Supported LLM Models
@@ -555,12 +555,18 @@ spec:
    - Check rate limits
    - Ensure model availability
 
-3. **Performance Issues**
+3. **Opik Configuration Issues**
+   - **Issue**: Agent fails to start or evaluation endpoints fail
+   - **Cause**: Missing or invalid Opik configuration (OPIK_API_KEY, OPIK_WORKSPACE)
+   - **Solution**: Opik configuration is **optional**. If not using Opik for evaluation tracking, ensure these environment variables are either unset or properly configured
+   - **Quick Fix**: Unset Opik variables if not needed: `unset OPIK_API_KEY OPIK_WORKSPACE`
+
+4. **Performance Issues**
    - Monitor log file size
    - Check system resources
    - Review LLM model choice
 
-4. **Data Loading Errors**
+5. **Data Loading Errors**
    - Verify CSV file format
    - Check file permissions
    - Ensure proper encoding
